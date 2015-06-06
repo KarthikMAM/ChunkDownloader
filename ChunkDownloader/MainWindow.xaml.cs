@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media.Animation;
 
 namespace ChunkDownloader
 {
@@ -27,9 +28,19 @@ namespace ChunkDownloader
         HttpWebRequest dwnlReq;
         BackgroundWorker worker;
 
+        Storyboard progressStoryboard;
+        DoubleAnimation propertyAnimation;
+
         public MainWindow()
         {
             InitializeComponent();
+            
+            //Initialize the ProgressBar Animation requirements
+            progressStoryboard = new Storyboard();
+            propertyAnimation = new DoubleAnimation();
+            progressStoryboard.Children.Add(propertyAnimation);
+            Storyboard.SetTarget(progressStoryboard, Progress);
+            Storyboard.SetTargetProperty(progressStoryboard, new PropertyPath(ProgressBar.ValueProperty));
         }
 
         /// <summary>
@@ -93,8 +104,8 @@ namespace ChunkDownloader
         /// The logic for downloading and writing the chunks
         /// The chunks are downloaded as sub-chunks or parts of size 256 bytes
         /// </summary>
-        /// <param name="startPos"></param>
-        /// <param name="chunkSize"></param>
+        /// <param name="startPos">Starting position of the chunk of download</param>
+        /// <param name="chunkSize">The size of the download</param>
         void downloadChunk(long startPos, long chunkSize)
         {
             //Select the range to be requested for the download
@@ -135,7 +146,13 @@ namespace ChunkDownloader
         /// <param name="e"></param>
         void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
-            Progress.Value = e.ProgressPercentage;
+            progressStoryboard.Stop();
+
+            propertyAnimation.From = Progress.Value;
+            propertyAnimation.To = e.ProgressPercentage;
+
+            progressStoryboard.Begin();
+            //Progress.Value = e.ProgressPercentage;
         }
 
         /// <summary>
