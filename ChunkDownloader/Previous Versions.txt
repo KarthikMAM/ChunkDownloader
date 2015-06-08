@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System;
 using System.ComponentModel;
 using System.IO;
@@ -27,6 +27,7 @@ namespace ChunkDownloader
         long fileSize, downloadedSize;
         HttpWebRequest dwnlReq;
         BackgroundWorker worker;
+        HttpWebResponse dwnlResp;
 
         Storyboard progressStoryboard;
         DoubleAnimation propertyAnimation;
@@ -92,10 +93,7 @@ namespace ChunkDownloader
             downloadedSize = 0;
 
             //Iterate the chunk download
-            while (downloadedSize < fileSize)
-            {
-                downloadChunk(downloadedSize, chunkSize);
-            }
+            while (downloadChunk(downloadedSize, chunkSize) != -1) { }
 
             worker.ReportProgress(100);
         }
@@ -106,13 +104,18 @@ namespace ChunkDownloader
         /// </summary>
         /// <param name="startPos">Starting position of the chunk of download</param>
         /// <param name="chunkSize">The size of the download</param>
-        void downloadChunk(long startPos, long chunkSize)
+        int downloadChunk(long startPos, long chunkSize)
         {
             //Select the range to be requested for the download
             dwnlReq.AddRange(startPos, startPos + chunkSize);
 
+            //Find whether there is one more chunk for download
+            //If the download is complete then return -1
+            dwnlResp = (HttpWebResponse)dwnlReq.GetResponse();
+            if (dwnlResp.ContentLength == 0) { return -1; }
+
             //Create the input and the output streams
-            Stream dwnlRes = dwnlReq.GetResponse().GetResponseStream();
+            Stream dwnlRes = dwnlResp.GetResponseStream();
             FileStream dwnlStream = new FileStream(saveLocation, FileMode.Append, FileAccess.Write);
 
             //Download and write the chunk in parts each of size CHUNK_PART_SIZE 
@@ -127,6 +130,8 @@ namespace ChunkDownloader
 
             dwnlStream.Close();
             dwnlRes.Close();
+
+            return 0;
         }
 
         /// <summary>
@@ -250,5 +255,42 @@ namespace ChunkDownloader
                 MessageBox.Show("Downloader Error");
             }
         }
+
+        /*void startDownload()
+        {
+            //Set the parameters for splitting the download into fragments
+            long actualSize = dwnlReq.GetResponse().ContentLength;
+            long remainingSize = actualSize, startPosition = 0;
+
+            //Iterate the chunk download
+            while (remainingSize > 0)
+            {
+                long downloadedSize = downloadChunk(startPosition, chunkSize);
+                startPosition += downloadedSize;
+                remainingSize -= downloadedSize;
+            }
+        }
+
+        long downloadChunk(long startPos, long chunkSize)
+        {
+            dwnlReq.AddRange(startPos, startPos + chunkSize);
+
+            Stream dwnlRes = dwnlReq.GetResponse().GetResponseStream();
+            FileStream dwnlStream = new FileStream(saveLocation, FileMode.Append, FileAccess.Write);
+
+            byte[] partData = new byte[CHUNK_PART_SIZE];
+            int partlen;
+            long dwnlLen = 0;
+            while ((partlen = dwnlRes.Read(partData, 0, CHUNK_PART_SIZE)) > 0)
+            {
+                dwnlLen += partlen;
+                dwnlStream.Write(partData, 0, partlen);
+            }
+
+            dwnlStream.Close();
+            dwnlRes.Close();
+
+            return dwnlLen;
+        }*/
     }
 }
