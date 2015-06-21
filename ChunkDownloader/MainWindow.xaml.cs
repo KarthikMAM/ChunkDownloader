@@ -88,16 +88,14 @@ namespace ChunkDownloader
         void worker_DoWork(object sender, DoWorkEventArgs e)
         {
             //Set the parameters for splitting the download into fragments
-            fileSize = dwnlReq.GetResponse().ContentLength;
+            fileSize = chunkSize;
             downloadedSize = 0;
 
             //Iterate the chunk download
-            while (downloadedSize < fileSize)
-            {
-                downloadChunk(downloadedSize, chunkSize);
-            }
+            while (downloadChunk(downloadedSize, chunkSize)) {}
 
             worker.ReportProgress(100);
+            MessageBox.Show(downloadedSize.ToString());
         }
 
         /// <summary>
@@ -106,27 +104,40 @@ namespace ChunkDownloader
         /// </summary>
         /// <param name="startPos">Starting position of the chunk of download</param>
         /// <param name="chunkSize">The size of the download</param>
-        void downloadChunk(long startPos, long chunkSize)
+        bool downloadChunk(long startPos, long chunkSize)
         {
-            //Select the range to be requested for the download
-            dwnlReq.AddRange(startPos, startPos + chunkSize);
-
-            //Create the input and the output streams
-            Stream dwnlRes = dwnlReq.GetResponse().GetResponseStream();
-            FileStream dwnlStream = new FileStream(saveLocation, FileMode.Append, FileAccess.Write);
-
-            //Download and write the chunk in parts each of size CHUNK_PART_SIZE 
-            byte[] partData = new byte[CHUNK_PART_SIZE];
-            int partlen;
-            while ((partlen = dwnlRes.Read(partData, 0, CHUNK_PART_SIZE)) > 0)
+            try
             {
-                downloadedSize += partlen;
-                dwnlStream.Write(partData, 0, partlen);
-                worker.ReportProgress(Convert.ToInt32((downloadedSize * 100) / fileSize));
-            }
+                //Select the range to be requested for the download
+                dwnlReq = (HttpWebRequest)WebRequest.Create(fileURL);
+                dwnlReq.AddRange(startPos, startPos + chunkSize);
 
-            dwnlStream.Close();
-            dwnlRes.Close();
+                //Create the input and the output streams
+                Stream dwnlRes = dwnlReq.GetResponse().GetResponseStream();
+                FileStream dwnlStream = new FileStream(saveLocation, FileMode.Append, FileAccess.Write);
+
+                //Download and write the chunk in parts each of size CHUNK_PART_SIZE 
+                byte[] partData = new byte[CHUNK_PART_SIZE];
+                int partlen;
+                while ((partlen = dwnlRes.Read(partData, 0, CHUNK_PART_SIZE)) > 0)
+                {
+                    downloadedSize += partlen;
+                    dwnlStream.Write(partData, 0, partlen);
+                    if (downloadedSize >= fileSize) { fileSize += chunkSize; }
+                    worker.ReportProgress(Convert.ToInt32((downloadedSize * 100) / fileSize));
+                }
+
+                //Close the streams and return success
+                dwnlStream.Close();
+                dwnlRes.Close();
+
+                return true;
+            }
+            catch (Exception e)
+            {
+                MessageBox.Show(e.Message);
+                return false;
+            }
         }
 
         /// <summary>
