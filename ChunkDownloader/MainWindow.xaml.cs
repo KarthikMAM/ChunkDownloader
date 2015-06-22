@@ -20,6 +20,7 @@ namespace ChunkDownloader
         static string CHUNK_SIZE_TEXT = "Limit Size";
         static string EMPTY_STRING = "";
         static int CHUNK_PART_SIZE = 256;
+        static int DEFAULT_SIZE = 1000000;
 
         string fileURL;
         string saveLocation;
@@ -64,7 +65,7 @@ namespace ChunkDownloader
                 //Get the data regarding the download
                 fileURL = Url.Text;
                 saveLocation = SaveLocation.Text;
-                chunkSize = (long)Convert.ToDouble(ChunkSize.Text);
+                chunkSize = (long)Convert.ToDouble(ChunkSize.Text) * DEFAULT_SIZE;
 
                 //Prepare for starting the download
                 dwnlReq = (HttpWebRequest)WebRequest.Create(fileURL);
@@ -215,7 +216,7 @@ namespace ChunkDownloader
             try
             {
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(Url.Text);
-                request.AddRange(0, Convert.ToInt32(ChunkSize.Text));
+                request.AddRange(0, Convert.ToInt32(ChunkSize.Text) * DEFAULT_SIZE);
 
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
 
