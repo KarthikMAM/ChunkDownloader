@@ -1,30 +1,23 @@
 ﻿<Window x:Class="ChunkDownloader.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Chunk Downloader" Height="302.531" Width="467.867">
-    <Window.Background>
-        <LinearGradientBrush EndPoint="0.5,1" MappingMode="RelativeToBoundingBox" StartPoint="0.5,0">
-            <GradientStop Color="#FFA49898"/>
-            <GradientStop Color="#FFBC2A2A" Offset="1"/>
-        </LinearGradientBrush>
-    </Window.Background>
+        Title="Chunk Downloader" Height="248.931" Width="467.867" Background="Firebrick">
     <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
         <Label Content="URL :"          HorizontalAlignment="Left" Margin="10,17,0,0" VerticalAlignment="Top" Width="64" Height="25" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
         <Label Content="Save :"         HorizontalAlignment="Left" Margin="10,47,0,0" VerticalAlignment="Top" Width="64" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
         <Label Content="Limit :"        HorizontalAlignment="Left" Margin="10,77,0,0" VerticalAlignment="Top" Width="64" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
-        <Label Content="Proxy :"        HorizontalAlignment="Left" Margin="10,107,0,0" VerticalAlignment="Top" Width="64" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
-        <Label Content="Progress : "    HorizontalAlignment="Left" Margin="10,137,0,0" VerticalAlignment="Top" Width="64" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
+        <Label Content="Progress : "    HorizontalAlignment="Left" Margin="10,107,0,0" VerticalAlignment="Top" Width="64" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
 
         <TextBox Name="Url"             HorizontalAlignment="Left" Height="23" Width="360" Margin="79,17,0,0"   VerticalAlignment="Top" Text="Enter the URL here"                       GotFocus="TextBox_GotFocus" FontStyle="Italic" MaxLines="1" VerticalContentAlignment="Center"/>
         <TextBox Name="SaveLocation"    HorizontalAlignment="Left" Height="23" Width="300" Margin="79,46,0,0"   VerticalAlignment="Top" Text="Enter the Save Location here"             GotFocus="TextBox_GotFocus" FontStyle="Italic" MaxLines="1" VerticalContentAlignment="Center"/>
-        <TextBox Name="ChunkSize"       HorizontalAlignment="Left" Height="23" Width="120" Margin="79,77,0,0"   VerticalAlignment="Top" Text="Limit Size"                               GotFocus="TextBox_GotFocus" FontStyle="Italic" MaxLines="1" VerticalContentAlignment="Center"/>
-        <TextBox Name="Proxy"           HorizontalAlignment="Left" Height="23" Width="360" Margin="79,106,0,0"  VerticalAlignment="Top" Text="Enter the Proxy e.g: proxy.ssn.net:8080"  GotFocus="TextBox_GotFocus" FontStyle="Italic" MaxLines="1" VerticalContentAlignment="Center"/>
+        <TextBox Name="ChunkSize"       HorizontalAlignment="Left" Height="23" Width="237" Margin="79,77,0,0"   VerticalAlignment="Top" Text="Limit Size"                               GotFocus="TextBox_GotFocus" FontStyle="Italic" MaxLines="1" VerticalContentAlignment="Center"/>
 
-        <ProgressBar Name="Progress"    Minimum="0" Maximum="100" Value="0" HorizontalAlignment="Left" Height="23" Margin="79,137,0,0" VerticalAlignment="Top" Width="360"/>
-        <Button Name="Ok" Content="Go" HorizontalAlignment="Left" Margin="364,187,0,0" VerticalAlignment="Top" Width="75" Click="Ok_Click"/>
+        <ProgressBar Name="Progress"    Minimum="0" Maximum="100" Value="0" HorizontalAlignment="Left" Height="23" Margin="79,107,0,0" VerticalAlignment="Top" Width="360"/>
+        <Button Name="Ok" Content="Go" HorizontalAlignment="Left" Margin="364,148,0,0" VerticalAlignment="Top" Width="75" Click="Ok_Click"/>
         <Button Name="SaveAs" Content="SaveAs" HorizontalAlignment="Left" Margin="384,47,0,0" VerticalAlignment="Top" Width="55" Height="23" Click="SaveAs_Click"/>
-        <Label Content="©Kappspot" HorizontalAlignment="Left" Margin="374,234,0,0" VerticalAlignment="Top"/>
+        <Label Content="©Kappspot" HorizontalAlignment="Left" Margin="369,188,0,-1.2" VerticalAlignment="Top" Width="70"/>
         <Button Name="TestLink" Content="Test Link" HorizontalAlignment="Left" Margin="321,77,0,0" VerticalAlignment="Top" Width="118" Click="TestLink_Click" Height="23"/>
-        <Button x:Name="TestLink_Copy" Content="Test Full" HorizontalAlignment="Left" Margin="204,77,0,0" VerticalAlignment="Top" Width="112" Click="TestLink_Copy_Click" Height="23"/>
+        <Label Content="MB"        HorizontalAlignment="Left" Margin="283,75,0,0" VerticalAlignment="Top" Width="33" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
+        <TextBlock Name="DownloadedSize" TextAlignment="Center" HorizontalAlignment="Left" Margin="79,110,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="21" Width="360"/>
     </Grid>
 </Window>
