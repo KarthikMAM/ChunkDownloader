@@ -29,6 +29,8 @@ namespace ChunkDownloader
 
         //Download helpers and parameters
         long fileSize, downloadedSize;
+        FileStream dwnlStream;
+        Stream dwnlRes;
         BackgroundWorker worker;
 
         //Animation variables
@@ -115,10 +117,14 @@ namespace ChunkDownloader
             //Since the number of chunks are unknown try and download as many chunks as possible
             while (true)
             {
-                //try and download each chunk of the file
+                //try and download each chunk of the file. If it fails release the resources.
                 try { downloadChunk(downloadedSize, chunkSize); }
                 catch (Exception ex)
                 {
+                    //Close the unclosed streams to avoid unnecessary holding of resources
+                    dwnlRes.Close();
+                    dwnlStream.Close();
+
                     //If there is any exception thrown check if the range was out-of-bounds
                     if (ex.Message == "The remote server returned an error: (416) Requested Range Not Satisfiable.")
                     {
@@ -139,6 +145,7 @@ namespace ChunkDownloader
                     }
                 }
             }
+
         }
 
         /// <summary>
@@ -158,8 +165,8 @@ namespace ChunkDownloader
             //Create the input and the output streams
             //Input Stream : Downloaded response stream
             //Output Stream : The required file
-            Stream dwnlRes = dwnlReq.GetResponse().GetResponseStream();
-            FileStream dwnlStream = new FileStream(saveLocation, FileMode.Append, FileAccess.Write);
+            dwnlRes = dwnlReq.GetResponse().GetResponseStream();
+            dwnlStream = new FileStream(saveLocation, FileMode.Append, FileAccess.Write);
 
             //Download and write the chunk in parts each of size CHUNK_PART_SIZE 
             byte[] partData = new byte[CHUNK_PART_SIZE];
