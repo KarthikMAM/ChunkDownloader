@@ -196,8 +196,8 @@ namespace ChunkDownloader
         {
             //Stop and update the From and to values of the StoryBoardAnimation of the progress bar
             progressStoryboard.Stop();
-            propertyAnimation.From = Progress.Value;
-            propertyAnimation.To = e.ProgressPercentage;
+				propertyAnimation.From = Progress.Value;
+				propertyAnimation.To = e.ProgressPercentage;
             progressStoryboard.Begin();
 
             //Update the downloaded file size in the progress bar
