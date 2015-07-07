@@ -20,7 +20,7 @@ namespace ChunkDownloader
         static string CHUNK_SIZE_TEXT = "Limit Size";
         static string EMPTY_STRING = "";
         static int CHUNK_PART_SIZE = 512;
-        static int DEFAULT_UNIT_SIZE = 1048576;
+        static int DEFAULT_UNIT_SIZE_MB = 1048576;
 
         //Default store of text fields
         string fileURL;
@@ -37,8 +37,12 @@ namespace ChunkDownloader
         Storyboard progressStoryboard;
         DoubleAnimation propertyAnimation;
 
+        /// <summary>
+        /// Initializes the MainWindow and animation properties
+        /// </summary>
         public MainWindow()
         {
+
             InitializeComponent();
 
             //Initialize the ProgressBar Animation requirements
@@ -56,9 +60,16 @@ namespace ChunkDownloader
         /// <param name="e"></param>
         private void SaveAs_Click(object sender, RoutedEventArgs e)
         {
-            //Get the saveAs location from the user
+            //Prepare the SaveAs Dialog Box
             SaveFileDialog saveDialog = new SaveFileDialog();
             saveDialog.OverwritePrompt = true;
+
+            //Get the download file name from the url
+            saveDialog.FileName = Path.GetFileNameWithoutExtension(Url.Text);
+            saveDialog.DefaultExt = Path.GetExtension(Url.Text);
+            saveDialog.Filter = saveDialog.DefaultExt + " | *" + saveDialog.DefaultExt;
+
+            //Get the saveAs location from the user
             saveDialog.ShowDialog();
             saveLocation = SaveLocation.Text = saveDialog.FileName;
             SaveLocation.FontStyle = FontStyles.Normal;
@@ -85,7 +96,7 @@ namespace ChunkDownloader
                 //Get the data regarding the download
                 fileURL = Url.Text;
                 saveLocation = SaveLocation.Text;
-                chunkSize = (long)Convert.ToDouble(ChunkSize.Text) * DEFAULT_UNIT_SIZE;
+                chunkSize = (long)Convert.ToDouble(ChunkSize.Text) * DEFAULT_UNIT_SIZE_MB;
 
                 //Start the download process
                 worker.RunWorkerAsync();
@@ -131,7 +142,7 @@ namespace ChunkDownloader
                         //If so, the possibility that the download is complete is very high
                         //So stop the download and close the application
                         worker.ReportProgress(100);
-                        MessageBox.Show("Download Completed \n  - File Name : " + Path.GetFileNameWithoutExtension(saveLocation) + " \n  - File Size    : " + ((float)downloadedSize / DEFAULT_UNIT_SIZE).ToString("0.## MB"), "Download Complete");
+                        MessageBox.Show("Download Completed \n  - File Name : " + Path.GetFileNameWithoutExtension(saveLocation) + " \n  - File Size    : " + ((float)downloadedSize / DEFAULT_UNIT_SIZE_MB).ToString("0.## MB"), "Download Complete");
                         break;
                     }
                     else
@@ -145,7 +156,6 @@ namespace ChunkDownloader
                     }
                 }
             }
-
         }
 
         /// <summary>
@@ -161,6 +171,7 @@ namespace ChunkDownloader
             //Select the range to be requested for the download (less than or equal to the chunk size)
             HttpWebRequest dwnlReq = (HttpWebRequest)WebRequest.Create(fileURL);
             dwnlReq.AddRange(startPos, startPos + chunkSize);
+            dwnlReq.AllowAutoRedirect = true;
 
             //Create the input and the output streams
             //Input Stream : Downloaded response stream
@@ -178,7 +189,7 @@ namespace ChunkDownloader
 
                 //Update the download parameters and the progress bar
                 downloadedSize += partlen;
-                if (downloadedSize >= fileSize) { fileSize += chunkSize / 2; }
+                if (downloadedSize >= fileSize) { fileSize += chunkSize; }
                 worker.ReportProgress(Convert.ToInt32((downloadedSize * 100) / fileSize));
             }
 
@@ -196,12 +207,12 @@ namespace ChunkDownloader
         {
             //Stop and update the From and to values of the StoryBoardAnimation of the progress bar
             progressStoryboard.Stop();
-				propertyAnimation.From = Progress.Value;
-				propertyAnimation.To = e.ProgressPercentage;
+            propertyAnimation.From = Progress.Value;
+            propertyAnimation.To = e.ProgressPercentage;
             progressStoryboard.Begin();
 
             //Update the downloaded file size in the progress bar
-            DownloadedSize.Text = "Downloaded : " + ((float)downloadedSize / DEFAULT_UNIT_SIZE).ToString("0.## MB");
+            DownloadedSize.Text = "Downloaded : " + ((float)downloadedSize / DEFAULT_UNIT_SIZE_MB).ToString("0.## MB");
         }
 
         /// <summary>
@@ -246,7 +257,7 @@ namespace ChunkDownloader
                 //Create request to download one chunk of data
                 //By applying a range to it
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(Url.Text);
-                request.AddRange(0, Convert.ToInt32(ChunkSize.Text) * DEFAULT_UNIT_SIZE);
+                request.AddRange(0, Convert.ToInt32(ChunkSize.Text) * DEFAULT_UNIT_SIZE_MB);
 
                 //Get the response from the server
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
@@ -256,10 +267,21 @@ namespace ChunkDownloader
                 if (response.Headers[HttpResponseHeader.AcceptRanges] == "bytes") { MessageBox.Show("Download Supported"); }
                 else { MessageBox.Show("Download Not Supported"); }
             }
-            catch
+            catch (Exception ex)
             {
-                MessageBox.Show("Try reducing the File Size", "Network Error");
+                MessageBox.Show(ex.Message, "Network Error");
             }
+        }
+
+        /// <summary>
+        /// This is used to create a new downloader window for another download
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void New_Click(object sender, RoutedEventArgs e)
+        {
+            //Creates a new Window
+            new MainWindow().Show();
         }
     }
 }
