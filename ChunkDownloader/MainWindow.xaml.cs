@@ -136,8 +136,10 @@ namespace ChunkDownloader
                     dwnlRes.Close();
                     dwnlStream.Close();
 
-                    //If there is any exception thrown check if the range was out-of-bounds
-                    if (ex.Message == "The remote server returned an error: (416) Requested Range Not Satisfiable.")
+                    //If there is any exception thrown check 
+                    //If the range was out-of-bounds or if the error was thrown due to less chunk size than actual => download is complete
+                    //Otherwise there is a problem, so try and delete the file which is half downloaded and throw an error message
+                    if (ex.Message == "The remote server returned an error: (416) Requested Range Not Satisfiable." || ex.Message == "Exception of type 'System.Exception' was thrown.")
                     {
                         //If so, the possibility that the download is complete is very high
                         //So stop the download and close the application
@@ -196,6 +198,11 @@ namespace ChunkDownloader
             //Close the streams and return success
             dwnlStream.Close();
             dwnlRes.Close();
+
+            //Checks if the received data length is lesser than the size of one chunk
+            //If so the download is complete, so throw an error to indicated that the download is complete
+            //Otherwise the download is not complete, so continue with the next chunk of the file
+            if (dwnlReq.GetResponse().ContentLength != chunkSize + 1) { throw new Exception(); }
         }
 
         /// <summary>

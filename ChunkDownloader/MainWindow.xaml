@@ -1,7 +1,7 @@
 ﻿<Window x:Class="ChunkDownloader.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Chunk Downloader" Height="224" Width="466.5" Background="Firebrick" ResizeMode="NoResize">
+        Title="Chunk Downloader" Height="224" Width="466.5" Background="Firebrick" ResizeMode="CanMinimize">
     <Grid HorizontalAlignment="Left" VerticalAlignment="Center">
         <Label Content="URL :"          HorizontalAlignment="Left" Margin="10,17,0,0" VerticalAlignment="Top" Width="64" Height="25" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
         <Label Content="Save :"         HorizontalAlignment="Left" Margin="10,47,0,0" VerticalAlignment="Top" Width="64" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
