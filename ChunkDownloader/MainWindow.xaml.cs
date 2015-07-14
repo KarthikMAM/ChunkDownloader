@@ -56,8 +56,8 @@ namespace ChunkDownloader
         /// <summary>
         /// Used to get the path for saving our downloaded file
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param name="sender">The svaeAs button that got clicked</param>
+        /// <param name="e">The event args for this event</param>
         private void SaveAs_Click(object sender, RoutedEventArgs e)
         {
             //Prepare the SaveAs Dialog Box
@@ -78,8 +78,8 @@ namespace ChunkDownloader
         /// <summary>
         /// On clicking the download button, all the preliminary conditions are set for the download to start asynchronously
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param name="sender">The Ok button that got clicked</param>
+        /// <param name="e">The Event args for this event</param>
         private void Ok_Click(object sender, RoutedEventArgs e)
         {
             //If all the required fields are filled properly
@@ -89,9 +89,9 @@ namespace ChunkDownloader
                 worker = new BackgroundWorker();
                 worker.WorkerReportsProgress = true;
                 worker.WorkerSupportsCancellation = true;
-                worker.ProgressChanged += worker_ProgressChanged;
-                worker.RunWorkerCompleted += worker_RunWorkerCompleted;
-                worker.DoWork += worker_DoWork;
+                worker.ProgressChanged += Worker_ProgressChanged;
+                worker.RunWorkerCompleted += Worker_RunWorkerCompleted;
+                worker.DoWork += Worker_DoWork;
 
                 //Get the data regarding the download
                 fileURL = Url.Text;
@@ -113,9 +113,9 @@ namespace ChunkDownloader
         /// <summary>
         /// This is where the logic for the download is implemented
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void worker_DoWork(object sender, DoWorkEventArgs e)
+        /// <param name="sender">The Worker that is going to do this work</param>
+        /// <param name="e">The event args of this event</param>
+        void Worker_DoWork(object sender, DoWorkEventArgs e)
         {
             //Set the parameters for splitting the download into fragments
             fileSize = chunkSize;
@@ -129,7 +129,7 @@ namespace ChunkDownloader
             while (true)
             {
                 //try and download each chunk of the file. If it fails release the resources.
-                try { downloadChunk(downloadedSize, chunkSize); }
+                try { DownloadChunk(downloadedSize, chunkSize); }
                 catch (Exception ex)
                 {
                     //Close the unclosed streams to avoid unnecessary holding of resources
@@ -167,7 +167,7 @@ namespace ChunkDownloader
         /// </summary>
         /// <param name="startPos">Starting position of the chunk of download</param>
         /// <param name="chunkSize">The size of the download</param>
-        void downloadChunk(long startPos, long chunkSize)
+        void DownloadChunk(long startPos, long chunkSize)
         {
             //Create a HttpWebRequest to the download server and
             //Select the range to be requested for the download (less than or equal to the chunk size)
@@ -208,9 +208,9 @@ namespace ChunkDownloader
         /// <summary>
         /// Used to update the progress bar with the download content value
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        /// <param name="sender">The Worker that has reported the progress</param>
+        /// <param name="e">The Event args for this event</param>
+        void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
             //Stop and update the From and to values of the StoryBoardAnimation of the progress bar
             progressStoryboard.Stop();
@@ -225,9 +225,9 @@ namespace ChunkDownloader
         /// <summary>
         /// This is where the Window is restored to its original state
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        void worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        /// <param name="sender">Download Worker which got completed</param>
+        /// <param name="e">The EventArgs</param>
+        void Worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
         {
             //Reenable the ok button
             Ok.IsEnabled = true;
@@ -242,8 +242,8 @@ namespace ChunkDownloader
         /// <summary>
         /// Used to remove the default text and ease the work of the user
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param name="sender">TextBox Which got focussed</param>
+        /// <param name="e">EventArgs</param>
         private void TextBox_GotFocus(object sender, RoutedEventArgs e)
         {
             //Change the textbox field attributes to enable easy editing of the text
@@ -255,8 +255,8 @@ namespace ChunkDownloader
         /// <summary>
         /// Used to test whether the file is allowed by the router to be downloaded in parts
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param name="sender">Button pressed</param>
+        /// <param name="e">EventArgs</param>
         private void TestLink_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -283,8 +283,8 @@ namespace ChunkDownloader
         /// <summary>
         /// This is used to create a new downloader window for another download
         /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
+        /// <param name="sender">Button Pressed</param>
+        /// <param name="e">Event Args</param>
         private void New_Click(object sender, RoutedEventArgs e)
         {
             //Creates a new Window
