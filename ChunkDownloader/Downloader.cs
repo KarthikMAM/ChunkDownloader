@@ -26,11 +26,12 @@ namespace ChunkDownloader
         public int TempPercentage { get; private set; }
         private long TempFileSize { get; set; }
         private int MaxLimitSize { get; set; }
-        private bool abortFlag;
+        private volatile bool abortFlag;
 
         //Data for tracking download speed
         private DateTime timeMills;
         private long lastDownloadSize;
+        private float dwnlSpeed;
 
         //The thread that downloads the file
         private Thread DownloadThread;
@@ -38,9 +39,9 @@ namespace ChunkDownloader
         /// <summary>
         /// Initializes the download
         /// </summary>
-        /// <param name="sourceUrl"></param>
-        /// <param name="destinationPath"></param>
-        /// <param name="maxLimitSize"></param>
+        /// <param name="sourceUrl">The source from which the file is to be downloaded from</param>
+        /// <param name="destinationPath">The path where the file is to be saved</param>
+        /// <param name="maxLimitSize">The maximum size of the file</param>
         public Downloader(string sourceUrl, string destinationPath, int maxLimitSize)
         {
             //Set the variables based on user inputs
@@ -58,7 +59,21 @@ namespace ChunkDownloader
         /// Starts the downloader by starting the downloader thread
         /// and also sets the initial state
         /// </summary>
-        public void StartDownload() { DownloadThread.Start(); timeMills = DateTime.Now; lastDownloadSize = 0; }
+        public void StartDownload()
+        {
+            //Assume the parameters for the download
+            TempFileSize = 0;
+            DownloadedSize = 0;
+            timeMills = DateTime.Now;
+            lastDownloadSize = 0;
+
+            //Create the file and close it
+            //Doing so deletes any previous copies existing
+            File.Create(DestinationPath).Close();
+
+            //Start the download
+            DownloadThread.Start();
+        }
 
         /// <summary>
         /// Aborts the thread by setting the flag variable to true
@@ -70,34 +85,29 @@ namespace ChunkDownloader
         /// </summary>
         private void DownloadFile()
         {
-            //Assume the parameters for the download
-            TempFileSize = MaxLimitSize;
-            DownloadedSize = 0;
-
-            //Create the file and close it
-            //Doing so deletes any previous copies existing
-            File.Create(DestinationPath).Close();
-
+            //Download one chunk at a time and get its results
+            //Notify the user of the final results
+            //Provide a way for the other threads to know when to reset to their initial state
             while (true)
             {
-                //Download one chunk at a time and get its results
-                //Notify the user of the final results
-                DownloadChunkResults results = DownloadChunk(DownloadedSize);
-                if (results == DownloadChunkResults.DownloadComplete)
+                //I set 100% to all the fields : this can be considered as a communication
+                //i.e., other threads might reset their state as if the download is complete
+                switch(DownloadChunk(DownloadedSize))
                 {
-                    TempPercentage = 100;
-                    MessageBox.Show("Download Completed \n  - File Name : " + Path.GetFileNameWithoutExtension(DestinationPath) + " \n  - File Size    : " + ((float)DownloadedSize / MEGA_BYTE).ToString("0.## MB"), "Download Complete");
-                    break;
+                    case DownloadChunkResults.DownloadComplete:
+                        TempPercentage = 100;
+                        MessageBox.Show("Download Completed \n  - File Name : " + Path.GetFileNameWithoutExtension(DestinationPath) + " \n  - File Size    : " + ((float)DownloadedSize / MEGA_BYTE).ToString("0.## MB"), "Download Complete");
+                        return;
+                    case DownloadChunkResults.DownloadError:
+                        TempPercentage = 100;
+                        File.Delete(DestinationPath);
+                        return;
+                    case DownloadChunkResults.AbortDownload:
+                        TempPercentage = 100;
+                        File.Delete(DestinationPath);
+                        MessageBox.Show("The download has been aborted by the user", "Download Aborted");
+                        return;
                 }
-                else if (results == DownloadChunkResults.AbortDownload)
-                {
-                    //If a download is aborted then delete it
-                    MessageBox.Show("The download has been aborted by the user", "Download Aborted");
-                    try { File.Delete(DestinationPath); }
-                    catch { }
-                    break;
-                }   //If there was an error in the download then abort                    
-                else if (results == DownloadChunkResults.DownloadError) { break; }
             }
         }
 
@@ -123,6 +133,10 @@ namespace ChunkDownloader
                 dwnlRes = dwnlReq.GetResponse().GetResponseStream();
                 dwnlStream = new FileStream(DestinationPath, FileMode.Append, FileAccess.Write);
 
+                //Get the content length and update the new file size with this value
+                long contentLength = dwnlReq.GetResponse().ContentLength;
+                TempFileSize += contentLength;
+
                 //while there is data or the download is not aborted download the current chunk
                 int partlen;
                 byte[] chunkBuffer = new byte[CHUNK_BUFFER];
@@ -131,21 +145,19 @@ namespace ChunkDownloader
                     //write the contents to the output file
                     dwnlStream.Write(chunkBuffer, 0, partlen);
 
-                    //Updae the progress parameters
+                    //Update the progress parameters
                     DownloadedSize += partlen;
-                    if (DownloadedSize >= TempFileSize) { TempFileSize += MaxLimitSize * 2; }
                     TempPercentage = Convert.ToInt32((DownloadedSize * 100) / TempFileSize);
                 }
 
                 //Close all the streams
                 dwnlRes.Close();
-                dwnlStream.Flush();
                 dwnlStream.Close();
 
                 //Message the callee by returning an enumerated result
                 //The message depends on the download state
                 if (abortFlag) { return DownloadChunkResults.AbortDownload; }
-                else if (dwnlReq.GetResponse().ContentLength != MaxLimitSize + 1) { return DownloadChunkResults.DownloadComplete; }
+                else if (contentLength != MaxLimitSize + 1) { return DownloadChunkResults.DownloadComplete; }
                 else { return DownloadChunkResults.ContinueDownload; }
             }
             catch (Exception e)
@@ -154,7 +166,7 @@ namespace ChunkDownloader
                 //Also delete the partial download file
                 //Message the callee about the error
                 MessageBox.Show(e.Message, "Download Failed");
-                try { dwnlRes.Close(); dwnlStream.Close(); File.Delete(DestinationPath); }
+                try { dwnlRes.Close(); dwnlStream.Close(); }
                 catch { }
                 return DownloadChunkResults.DownloadError;
             }
@@ -171,7 +183,8 @@ namespace ChunkDownloader
             int timeDiff = (timeMills - (timeMills = DateTime.Now)).Milliseconds;
 
             //If download speed is greater than 1MB then display it in MBps else in KBps
-            float dwnlSpeed = (float)sizeDiff / timeDiff;
+            dwnlSpeed = dwnlSpeed + (float)sizeDiff / timeDiff;
+            dwnlSpeed /= 2;
             if (dwnlSpeed > KILO_BYTE) { return (dwnlSpeed / KILO_BYTE).ToString("0.00 MBps"); }
             else { return (dwnlSpeed).ToString("0.00 KBps"); }
         }

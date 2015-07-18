@@ -33,8 +33,12 @@ namespace ChunkDownloader
         /// </summary>
         public MainWindow()
         {
-
             InitializeComponent();
+
+            //Create a new instance of the timer to check and update the progress report periodically
+            progressUpdateTimer = new DispatcherTimer();
+            progressUpdateTimer.Interval = TimeSpan.FromMilliseconds(500);
+            progressUpdateTimer.Tick += ProgressUpdateTimer_Tick;
 
             //Initialize the ProgressBar Animation requirements
             progressStoryboard = new Storyboard();
@@ -42,11 +46,7 @@ namespace ChunkDownloader
             progressStoryboard.Children.Add(propertyAnimation);
             Storyboard.SetTarget(progressStoryboard, Progress);
             Storyboard.SetTargetProperty(progressStoryboard, new PropertyPath(ProgressBar.ValueProperty));
-
-            //Create a new instance of the timer to check and update the progress report periodically
-            progressUpdateTimer = new DispatcherTimer();
-            progressUpdateTimer.Interval = TimeSpan.FromMilliseconds(500);
-            progressUpdateTimer.Tick += ProgressUpdateTimer_Tick;
+            propertyAnimation.Duration = progressUpdateTimer.Interval;
         }
 
         /// <summary>
@@ -98,22 +98,14 @@ namespace ChunkDownloader
                 }
                 else { MessageBox.Show("All Details are to be furnished", "Incomplete Fields"); }
             }
-            else
-            {
-                //Change Cancel button to Ok Button
-                Ok.Content = "Go";
-
-                //Call abort download and reset the window
-                downloader.AbortDownload();
-                ResetWindow();
-            }
+            else { downloader.AbortDownload(); }
 
         }
 
         /// <summary>
-        /// Resets the window to its original state
+        /// Resets all fields to its original state
         /// </summary>
-        private void ResetWindow()
+        private void ResetApp()
         {
             //Updating data fields
             Url.Text = URL_TEXT;
@@ -131,6 +123,12 @@ namespace ChunkDownloader
 
             //Update visual styles of the labels
             Url.FontStyle = SaveLocation.FontStyle = ChunkSize.FontStyle = FontStyles.Italic;
+
+            //Update The content of the Ok button
+            Ok.Content = "Go";
+
+            //Reset some data fields
+            if (progressUpdateTimer != null) { progressUpdateTimer.Stop(); }
         }
 
         /// <summary>
@@ -149,8 +147,8 @@ namespace ChunkDownloader
             //Update the downloaded file size in the progress bar
             DownloadedSize.Text = "Downloaded : " + downloader.SizeDownloaded() + " (" + downloader.DownloadSpeed() + ")";
 
-            //Download is complete, so stop and reset the window
-            if (downloader.TempPercentage == 100) { progressUpdateTimer.Stop(); ResetWindow(); }
+            //Download is complete, so stop and reset the all fields
+            if (downloader.TempPercentage == 100) { ResetApp(); }
         }
 
         /// <summary>
