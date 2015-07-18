@@ -2,10 +2,10 @@
 using System;
 using System.ComponentModel;
 using System.IO;
-using System.Net;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 
 namespace ChunkDownloader
 {
@@ -19,23 +19,14 @@ namespace ChunkDownloader
         static string URL_TEXT = "Enter the URL here";
         static string CHUNK_SIZE_TEXT = "Limit Size";
         static string EMPTY_STRING = "";
-        static int CHUNK_PART_SIZE = 512;
-        static int DEFAULT_UNIT_SIZE_MB = 1048576;
-
-        //Default store of text fields
-        string fileURL;
-        string saveLocation;
-        long chunkSize = 0;
-
-        //Download helpers and parameters
-        long fileSize, downloadedSize;
-        FileStream dwnlStream;
-        Stream dwnlRes;
-        BackgroundWorker worker;
 
         //Animation variables
         Storyboard progressStoryboard;
         DoubleAnimation propertyAnimation;
+
+        //Data for tracking the download
+        Downloader downloader;
+        DispatcherTimer progressUpdateTimer;
 
         /// <summary>
         /// Initializes the MainWindow and animation properties
@@ -51,6 +42,11 @@ namespace ChunkDownloader
             progressStoryboard.Children.Add(propertyAnimation);
             Storyboard.SetTarget(progressStoryboard, Progress);
             Storyboard.SetTargetProperty(progressStoryboard, new PropertyPath(ProgressBar.ValueProperty));
+
+            //Create a new instance of the timer to check and update the progress report periodically
+            progressUpdateTimer = new DispatcherTimer();
+            progressUpdateTimer.Interval = TimeSpan.FromMilliseconds(500);
+            progressUpdateTimer.Tick += ProgressUpdateTimer_Tick;
         }
 
         /// <summary>
@@ -65,13 +61,16 @@ namespace ChunkDownloader
             saveDialog.OverwritePrompt = true;
 
             //Get the download file name from the url
-            saveDialog.FileName = Path.GetFileNameWithoutExtension(Url.Text);
-            saveDialog.DefaultExt = Path.GetExtension(Url.Text);
-            saveDialog.Filter = saveDialog.DefaultExt + " | *" + saveDialog.DefaultExt;
+            if (Path.GetExtension(Url.Text).Length <= 5)
+            {
+                saveDialog.FileName = Path.GetFileNameWithoutExtension(Url.Text);
+                saveDialog.DefaultExt = Path.GetExtension(Url.Text);
+                saveDialog.Filter = saveDialog.DefaultExt + " | *" + saveDialog.DefaultExt;
+            }
 
             //Get the saveAs location from the user
             saveDialog.ShowDialog();
-            saveLocation = SaveLocation.Text = saveDialog.FileName;
+            SaveLocation.Text = saveDialog.FileName;
             SaveLocation.FontStyle = FontStyles.Normal;
         }
 
@@ -82,167 +81,82 @@ namespace ChunkDownloader
         /// <param name="e">The Event args for this event</param>
         private void Ok_Click(object sender, RoutedEventArgs e)
         {
-            //If all the required fields are filled properly
-            if (saveLocation != EMPTY_STRING && saveLocation != SAVE_LOCATION_TEXT && ChunkSize.Text != EMPTY_STRING && ChunkSize.Text != CHUNK_SIZE_TEXT && Url.Text != EMPTY_STRING && Url.Text != URL_TEXT)
+            if (Ok.Content.ToString() == "Go")
             {
-                //Creation of a new Worker for download process
-                worker = new BackgroundWorker();
-                worker.WorkerReportsProgress = true;
-                worker.WorkerSupportsCancellation = true;
-                worker.ProgressChanged += Worker_ProgressChanged;
-                worker.RunWorkerCompleted += Worker_RunWorkerCompleted;
-                worker.DoWork += Worker_DoWork;
+                //Check if all the fields are Ok
+                if (SaveLocation.Text != EMPTY_STRING && SaveLocation.Text != SAVE_LOCATION_TEXT && ChunkSize.Text != EMPTY_STRING && ChunkSize.Text != CHUNK_SIZE_TEXT && Url.Text != EMPTY_STRING && Url.Text != URL_TEXT)
+                {
+                    //Create a new instance of the Downloader and start the download
+                    downloader = new Downloader(Url.Text, SaveLocation.Text, Convert.ToInt32(ChunkSize.Text));
+                    downloader.StartDownload();
 
-                //Get the data regarding the download
-                fileURL = Url.Text;
-                saveLocation = SaveLocation.Text;
-                chunkSize = (long)Convert.ToDouble(ChunkSize.Text) * DEFAULT_UNIT_SIZE_MB;
+                    //Start the downlaod
+                    progressUpdateTimer.Start();
 
-                //Start the download process
-                worker.RunWorkerAsync();
-
-                //Disable the Ok button
-                Ok.IsEnabled = false;
+                    //Change Ok to Cancel
+                    Ok.Content = "Cancel";
+                }
+                else { MessageBox.Show("All Details are to be furnished", "Incomplete Fields"); }
             }
             else
             {
-                MessageBox.Show("All the text fields are mandatory.", "Incomplete Fields");
+                //Change Cancel button to Ok Button
+                Ok.Content = "Go";
+
+                //Call abort download and reset the window
+                downloader.AbortDownload();
+                ResetWindow();
             }
+
         }
 
         /// <summary>
-        /// This is where the logic for the download is implemented
+        /// Resets the window to its original state
         /// </summary>
-        /// <param name="sender">The Worker that is going to do this work</param>
-        /// <param name="e">The event args of this event</param>
-        void Worker_DoWork(object sender, DoWorkEventArgs e)
+        private void ResetWindow()
         {
-            //Set the parameters for splitting the download into fragments
-            fileSize = chunkSize;
-            downloadedSize = 0;
+            //Updating data fields
+            Url.Text = URL_TEXT;
+            SaveLocation.Text = SAVE_LOCATION_TEXT;
+            DownloadedSize.Text = "";
 
-            //Try to delete the files with the same name as the download
-            try { File.Delete(saveLocation); }
-            catch { }
+            //Stop the progress update timer
+            if (progressUpdateTimer != null) { progressUpdateTimer.Stop(); }
 
-            //Since the number of chunks are unknown try and download as many chunks as possible
-            while (true)
-            {
-                //try and download each chunk of the file. If it fails release the resources.
-                try { DownloadChunk(downloadedSize, chunkSize); }
-                catch (Exception ex)
-                {
-                    //Close the unclosed streams to avoid unnecessary holding of resources
-                    dwnlRes.Close();
-                    dwnlStream.Close();
+            //Updating the visual fields
+            progressStoryboard.Stop();
+                propertyAnimation.From = Progress.Value;
+                propertyAnimation.To = 0;   
+            progressStoryboard.Begin();
 
-                    //If there is any exception thrown check 
-                    //If the range was out-of-bounds or if the error was thrown due to less chunk size than actual => download is complete
-                    //Otherwise there is a problem, so try and delete the file which is half downloaded and throw an error message
-                    if (ex.Message == "The remote server returned an error: (416) Requested Range Not Satisfiable." || ex.Message == "Exception of type 'System.Exception' was thrown.")
-                    {
-                        //If so, the possibility that the download is complete is very high
-                        //So stop the download and close the application
-                        worker.ReportProgress(100);
-                        MessageBox.Show("Download Completed \n  - File Name : " + Path.GetFileNameWithoutExtension(saveLocation) + " \n  - File Size    : " + ((float)downloadedSize / DEFAULT_UNIT_SIZE_MB).ToString("0.## MB"), "Download Complete");
-                        break;
-                    }
-                    else
-                    {
-                        //If there is anyother error then the file is not downloaded completely
-                        //So stop the download and roll-back the changes
-                        MessageBox.Show(ex.Message, "Download Failed");
-                        try { File.Delete(fileURL); }
-                        catch { }
-                        break;
-                    }
-                }
-            }
+            //Update visual styles of the labels
+            Url.FontStyle = SaveLocation.FontStyle = ChunkSize.FontStyle = FontStyles.Italic;
         }
 
         /// <summary>
-        /// The logic for downloading and writing the chunks.
-        /// The chunks are downloaded as sub-chunks or parts of size CHUNK_PART_SIZE bytes.
-        /// The errors must be handled in the calling function.
+        /// Will update the progress report once in every few milliseconds
         /// </summary>
-        /// <param name="startPos">Starting position of the chunk of download</param>
-        /// <param name="chunkSize">The size of the download</param>
-        void DownloadChunk(long startPos, long chunkSize)
-        {
-            //Create a HttpWebRequest to the download server and
-            //Select the range to be requested for the download (less than or equal to the chunk size)
-            HttpWebRequest dwnlReq = (HttpWebRequest)WebRequest.Create(fileURL);
-            dwnlReq.AddRange(startPos, startPos + chunkSize);
-            dwnlReq.AllowAutoRedirect = true;
-
-            //Create the input and the output streams
-            //Input Stream : Downloaded response stream
-            //Output Stream : The required file
-            dwnlRes = dwnlReq.GetResponse().GetResponseStream();
-            dwnlStream = new FileStream(saveLocation, FileMode.Append, FileAccess.Write);
-
-            //Download and write the chunk in parts each of size CHUNK_PART_SIZE 
-            byte[] partData = new byte[CHUNK_PART_SIZE];
-            int partlen;
-            while ((partlen = dwnlRes.Read(partData, 0, CHUNK_PART_SIZE)) > 0)
-            {
-                //write the downloaded data to the save location
-                dwnlStream.Write(partData, 0, partlen);
-
-                //Update the download parameters and the progress bar
-                downloadedSize += partlen;
-                if (downloadedSize >= fileSize) { fileSize += chunkSize; }
-                worker.ReportProgress(Convert.ToInt32((downloadedSize * 100) / fileSize));
-            }
-
-            //Close the streams and return success
-            dwnlStream.Close();
-            dwnlRes.Close();
-
-            //Checks if the received data length is lesser than the size of one chunk
-            //If so the download is complete, so throw an error to indicated that the download is complete
-            //Otherwise the download is not complete, so continue with the next chunk of the file
-            if (dwnlReq.GetResponse().ContentLength != chunkSize + 1) { throw new Exception(); }
-        }
-
-        /// <summary>
-        /// Used to update the progress bar with the download content value
-        /// </summary>
-        /// <param name="sender">The Worker that has reported the progress</param>
-        /// <param name="e">The Event args for this event</param>
-        void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
+        /// <param name="sender">The timer that is triggering this event</param>
+        /// <param name="e">EventArgs</param>
+        void ProgressUpdateTimer_Tick(object sender, EventArgs e)
         {
             //Stop and update the From and to values of the StoryBoardAnimation of the progress bar
             progressStoryboard.Stop();
-            propertyAnimation.From = Progress.Value;
-            propertyAnimation.To = e.ProgressPercentage;
+                propertyAnimation.From = Progress.Value;
+                propertyAnimation.To = downloader.TempPercentage;
             progressStoryboard.Begin();
 
             //Update the downloaded file size in the progress bar
-            DownloadedSize.Text = "Downloaded : " + ((float)downloadedSize / DEFAULT_UNIT_SIZE_MB).ToString("0.## MB");
-        }
+            DownloadedSize.Text = "Downloaded : " + downloader.SizeDownloaded() + " (" + downloader.DownloadSpeed() + ")";
 
-        /// <summary>
-        /// This is where the Window is restored to its original state
-        /// </summary>
-        /// <param name="sender">Download Worker which got completed</param>
-        /// <param name="e">The EventArgs</param>
-        void Worker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            //Reenable the ok button
-            Ok.IsEnabled = true;
-
-            //Reset the text field to their original contents
-            Url.Text = URL_TEXT;
-            SaveLocation.Text = SAVE_LOCATION_TEXT;
-            ChunkSize.Text = CHUNK_SIZE_TEXT;
-            Url.FontStyle = SaveLocation.FontStyle = ChunkSize.FontStyle = FontStyles.Italic;
+            //Download is complete, so stop and reset the window
+            if (downloader.TempPercentage == 100) { progressUpdateTimer.Stop(); ResetWindow(); }
         }
 
         /// <summary>
         /// Used to remove the default text and ease the work of the user
         /// </summary>
-        /// <param name="sender">TextBox Which got focussed</param>
+        /// <param name="sender">TextBox which got focussed</param>
         /// <param name="e">EventArgs</param>
         private void TextBox_GotFocus(object sender, RoutedEventArgs e)
         {
@@ -259,25 +173,9 @@ namespace ChunkDownloader
         /// <param name="e">EventArgs</param>
         private void TestLink_Click(object sender, RoutedEventArgs e)
         {
-            try
-            {
-                //Create request to download one chunk of data
-                //By applying a range to it
-                HttpWebRequest request = (HttpWebRequest)WebRequest.Create(Url.Text);
-                request.AddRange(0, Convert.ToInt32(ChunkSize.Text) * DEFAULT_UNIT_SIZE_MB);
-
-                //Get the response from the server
-                HttpWebResponse response = (HttpWebResponse)request.GetResponse();
-
-                //Check to see if the AcceptRanges field is "bytes"
-                //If so the downloads are byte addressed and can be downloaded by this downloader
-                if (response.Headers[HttpResponseHeader.AcceptRanges] == "bytes") { MessageBox.Show("Download Supported"); }
-                else { MessageBox.Show("Download Not Supported"); }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message, "Network Error");
-            }
+            //Creates a new instance of the testDownload class to perform a non blocking download
+            if (ChunkSize.Text != EMPTY_STRING && ChunkSize.Text != CHUNK_SIZE_TEXT && Url.Text != EMPTY_STRING && Url.Text != URL_TEXT) { new TestDownload(Url.Text, Convert.ToInt32(ChunkSize.Text)); }
+            else { MessageBox.Show("All Details are to be furnished", "Incomplete Fields"); }
         }
 
         /// <summary>
@@ -285,10 +183,14 @@ namespace ChunkDownloader
         /// </summary>
         /// <param name="sender">Button Pressed</param>
         /// <param name="e">Event Args</param>
-        private void New_Click(object sender, RoutedEventArgs e)
-        {
-            //Creates a new Window
-            new MainWindow().Show();
-        }
+        private void New_Click(object sender, RoutedEventArgs e) { new MainWindow().Show(); }
+
+        /// <summary>
+        /// Stops the thread that is running when the app is about to close
+        /// If there is any instance of the downloader call abort on it
+        /// </summary>
+        /// <param name="sender">The application that is about to close</param>
+        /// <param name="e">CancelEventArgs</param>
+        private void Window_Closing(object sender, CancelEventArgs e) { if (downloader != null) { downloader.AbortDownload(); } }
     }
 }

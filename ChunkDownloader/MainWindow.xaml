@@ -1,7 +1,7 @@
 ﻿<Window x:Class="ChunkDownloader.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Chunk Downloader" Height="224" Width="466.5" Background="Firebrick" ResizeMode="CanMinimize">
+        Title="Chunk Downloader" Height="224" Width="466.5" Background="Firebrick" ResizeMode="CanMinimize" Closing="Window_Closing">
     <Grid HorizontalAlignment="Left" VerticalAlignment="Center">
         <Label Content="URL :"          HorizontalAlignment="Left" Margin="10,17,0,0" VerticalAlignment="Top" Width="64" Height="25" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
         <Label Content="Save :"         HorizontalAlignment="Left" Margin="10,47,0,0" VerticalAlignment="Top" Width="64" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
@@ -9,14 +9,14 @@
         <Label Content="Progress : "    HorizontalAlignment="Left" Margin="10,107,0,0" VerticalAlignment="Top" Width="64" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
 
         <TextBox Name="Url"             HorizontalAlignment="Left" Height="23" Width="360" Margin="79,17,0,0"   VerticalAlignment="Top" Text="Enter the URL here"                       GotFocus="TextBox_GotFocus" FontStyle="Italic" MaxLines="1" VerticalContentAlignment="Center" ToolTip="Paste the URL here"/>
+        <Button Name="SaveAs" Content="SaveAs" HorizontalAlignment="Left" Margin="384,47,0,0" VerticalAlignment="Top" Width="55" Height="23" Click="SaveAs_Click" ToolTip="Opens the save as Dialog box"/>
         <TextBox Name="SaveLocation"    HorizontalAlignment="Left" Height="23" Width="300" Margin="79,47,0,0"   VerticalAlignment="Top" Text="Enter the Save Location here"             GotFocus="TextBox_GotFocus" FontStyle="Italic" MaxLines="1" VerticalContentAlignment="Center" ToolTip="Enter a location to save the file"/>
-        <TextBox Name="ChunkSize"       HorizontalAlignment="Left" Height="23" Width="237" Margin="79,77,0,0"   VerticalAlignment="Top" Text="Limit Size"                               GotFocus="TextBox_GotFocus" FontStyle="Italic" MaxLines="1" VerticalContentAlignment="Center" ToolTip="Enter the restriction limit of your connection in MB say 50"/>
+        <TextBox Name="ChunkSize"       HorizontalAlignment="Left" Height="23" Width="237" Margin="79,77,0,0"   VerticalAlignment="Top" Text="Limit Size"                               GotFocus="TextBox_GotFocus" FontStyle="Italic" MaxLines="1" VerticalContentAlignment="Center" ToolTip="Enter the restriction limit of your connection in MB say 49"/>
+        <Button Name="TestLink" Content="Test Link" HorizontalAlignment="Left" Margin="321,77,0,0" VerticalAlignment="Top" Width="118" Click="TestLink_Click" Height="23" ToolTip="Use this to test the link"/>
 
         <ProgressBar Name="Progress"    Minimum="0" Maximum="100" Value="0" HorizontalAlignment="Left" Height="23" Margin="79,107,0,0" VerticalAlignment="Top" Width="360" ToolTip="Ignore the increase and decrease of the progress"/>
         <Button Name="Ok" Content="Go" HorizontalAlignment="Left" Margin="364,148,0,0" VerticalAlignment="Top" Width="75" Click="Ok_Click" Height="26" ToolTip="Click this to start the download"/>
-        <Button Name="SaveAs" Content="SaveAs" HorizontalAlignment="Left" Margin="384,47,0,0" VerticalAlignment="Top" Width="55" Height="23" Click="SaveAs_Click" ToolTip="Opens the save as Dialog box"/>
         <Label Content="©Kappspot" HorizontalAlignment="Left" HorizontalContentAlignment="Left" Margin="10,149,0,0" VerticalAlignment="Top" Width="116"/>
-        <Button Name="TestLink" Content="Test Link" HorizontalAlignment="Left" Margin="321,77,0,0" VerticalAlignment="Top" Width="118" Click="TestLink_Click" Height="23" ToolTip="Use this to test the link"/>
         <Label Content="MB"        HorizontalAlignment="Left" Margin="283,75,0,0" VerticalAlignment="Top" Width="33" HorizontalContentAlignment="Right" VerticalContentAlignment="Center" FontWeight="Bold"/>
         <TextBlock Name="DownloadedSize" TextAlignment="Center" HorizontalAlignment="Left" Margin="79,110,0,0" TextWrapping="Wrap" VerticalAlignment="Top" Height="21" Width="360"/>
         <Button Name="New" Content="+" HorizontalAlignment="Left" Margin="321,149,0,-0.6" VerticalAlignment="Top" Width="38" Click="New_Click" Height="26" FontWeight="ExtraBold" FontSize="15" ToolTip="Creates a new download window"/>
