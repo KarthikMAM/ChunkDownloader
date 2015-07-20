@@ -52,7 +52,6 @@ namespace ChunkDownloader
 
             //Initialize the downloader
             DownloadThread = new Thread(new ThreadStart(DownloadFile));
-            DownloadThread.IsBackground = false;
         }
 
         /// <summary>
@@ -104,8 +103,8 @@ namespace ChunkDownloader
                         return;
                     case DownloadChunkResults.AbortDownload:
                         TempPercentage = 100;
-                        File.Delete(DestinationPath);
                         MessageBox.Show("The download has been aborted by the user", "Download Aborted");
+                        File.Delete(DestinationPath);
                         return;
                 }
             }
@@ -120,7 +119,7 @@ namespace ChunkDownloader
         {
             //IO streams
             Stream dwnlRes = null;
-            FileStream dwnlStream = null;
+            BufferedStream dwnlStream = null;
 
             try
             {
@@ -131,7 +130,7 @@ namespace ChunkDownloader
 
                 //Get the response stream and open an output stream
                 dwnlRes = dwnlReq.GetResponse().GetResponseStream();
-                dwnlStream = new FileStream(DestinationPath, FileMode.Append, FileAccess.Write);
+                dwnlStream = new BufferedStream(new FileStream(DestinationPath, FileMode.Append, FileAccess.Write));
 
                 //Get the content length and update the new file size with this value
                 long contentLength = dwnlReq.GetResponse().ContentLength;
@@ -140,7 +139,7 @@ namespace ChunkDownloader
                 //while there is data or the download is not aborted download the current chunk
                 int partlen;
                 byte[] chunkBuffer = new byte[CHUNK_BUFFER];
-                while ((partlen = dwnlRes.Read(chunkBuffer, 0, CHUNK_BUFFER)) > 0 && !abortFlag)
+                while (!abortFlag && (partlen = dwnlRes.Read(chunkBuffer, 0, CHUNK_BUFFER)) > 0)
                 {
                     //write the contents to the output file
                     dwnlStream.Write(chunkBuffer, 0, partlen);
@@ -148,6 +147,7 @@ namespace ChunkDownloader
                     //Update the progress parameters
                     DownloadedSize += partlen;
                     TempPercentage = Convert.ToInt32((DownloadedSize * 100) / TempFileSize);
+                    Thread.Sleep(0);
                 }
 
                 //Close all the streams
