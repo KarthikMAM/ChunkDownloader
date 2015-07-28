@@ -147,7 +147,6 @@ namespace ChunkDownloader
                     //Update the progress parameters
                     DownloadedSize += partlen;
                     TempPercentage = Convert.ToInt32((DownloadedSize * 100) / TempFileSize);
-                    Thread.Sleep(0);
                 }
 
                 //Close all the streams
@@ -235,6 +234,7 @@ namespace ChunkDownloader
                 //By applying a range to it
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(SourceURL);
                 request.AddRange(0, MaxLimitSize);
+                request.Timeout = 10000;
 
                 //Get the response from the server
                 HttpWebResponse response = (HttpWebResponse)request.GetResponse();
